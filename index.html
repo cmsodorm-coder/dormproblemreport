@@ -32,7 +32,7 @@
         <input
           id="ticketInput"
           type="text"
-          placeholder="เช่น T-2026-001 หรือกรอกเลขที่ได้รับทางอีเมล"
+          placeholder="เช่น M14HT6 หรือกรอกเลขที่ได้รับทางอีเมล"
           class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007932] focus:bg-white transition"
           required
         />
@@ -107,7 +107,6 @@
   </div>
 
   <script>
-    // Paste your Google Apps Script Web App URL here
     const SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbwYbn6eHYTpd82hXmGfuNRspZk23fQgfAlkOJrnI-KKCcar69Z2RasXm-zCY22i-wSVmQ/exec";
 
     const form = document.getElementById("searchForm");
@@ -154,8 +153,7 @@
       const ticket = input.value.trim();
       if (!ticket) return;
 
-      // Log ticket input
-      console.log(`[Ticket Search] Searching for ticket number: "${ticket}"`);
+      console.log(`[Ticket Search] Searching for ticket: "${ticket}"`);
 
       btn.disabled = true;
       btn.textContent = "กำลังค้นหา...";
@@ -163,13 +161,12 @@
       resultContainer.classList.add("hidden");
 
       const requestUrl = `${SCRIPT_API_URL}?ticket=${encodeURIComponent(ticket)}`;
-      console.log(`[Ticket Search] Request URL: ${requestUrl}`);
 
       try {
         const res = await fetch(requestUrl);
         const json = await res.json();
 
-        console.log("[Ticket Search] API Response received:", json);
+        console.log("[Ticket Search] Response:", json);
 
         if (json.status === "success") {
           const d = json.data;
@@ -188,12 +185,11 @@
 
           resultContainer.classList.remove("hidden");
         } else {
-          console.warn("[Ticket Search] Ticket not found or error:", json.message);
           errorText.textContent = json.message || "ไม่พบข้อมูลหมายเลข Ticket นี้";
           errorBox.classList.remove("hidden");
         }
       } catch (err) {
-        console.error("[Ticket Search] Network/API Error:", err);
+        console.error("[Ticket Search] Error:", err);
         errorText.textContent = "ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้ กรุณาลองใหม่อีกครั้ง";
         errorBox.classList.remove("hidden");
       } finally {
