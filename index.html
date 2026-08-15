@@ -107,8 +107,8 @@
   </div>
 
   <script>
-    // Paste your deployed Apps Script Web App URL here
-    const SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbwYbn6eHYTpd82hXmGfuNRspZk23fQgfAlkOJrnI-KKCcar69Z2RasXm-zCY22i-wSVmQ/exec";
+    // Paste your Google Apps Script Web App URL here
+    const SCRIPT_API_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 
     const form = document.getElementById("searchForm");
     const input = document.getElementById("ticketInput");
@@ -154,14 +154,22 @@
       const ticket = input.value.trim();
       if (!ticket) return;
 
+      // Log ticket input
+      console.log(`[Ticket Search] Searching for ticket number: "${ticket}"`);
+
       btn.disabled = true;
       btn.textContent = "กำลังค้นหา...";
       errorBox.classList.add("hidden");
       resultContainer.classList.add("hidden");
 
+      const requestUrl = `${SCRIPT_API_URL}?ticket=${encodeURIComponent(ticket)}`;
+      console.log(`[Ticket Search] Request URL: ${requestUrl}`);
+
       try {
-        const res = await fetch(`${SCRIPT_API_URL}?ticket=${encodeURIComponent(ticket)}`);
+        const res = await fetch(requestUrl);
         const json = await res.json();
+
+        console.log("[Ticket Search] API Response received:", json);
 
         if (json.status === "success") {
           const d = json.data;
@@ -180,10 +188,12 @@
 
           resultContainer.classList.remove("hidden");
         } else {
+          console.warn("[Ticket Search] Ticket not found or error:", json.message);
           errorText.textContent = json.message || "ไม่พบข้อมูลหมายเลข Ticket นี้";
           errorBox.classList.remove("hidden");
         }
       } catch (err) {
+        console.error("[Ticket Search] Network/API Error:", err);
         errorText.textContent = "ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้ กรุณาลองใหม่อีกครั้ง";
         errorBox.classList.remove("hidden");
       } finally {
