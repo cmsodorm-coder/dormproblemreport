@@ -54,13 +54,27 @@
     <!-- Results Display -->
     <div id="resultContainer" class="hidden p-6 space-y-6">
       
-      <!-- Status Card -->
+      <!-- Current Status Card -->
       <div id="statusCard" class="p-4 bg-slate-50 border border-slate-200 border-l-4 rounded-lg flex items-center justify-between">
         <div>
           <span class="text-xs text-slate-500 block uppercase font-medium">Ticket ID</span>
           <span id="ticketDisplay" class="text-lg font-bold text-slate-900"></span>
         </div>
         <span id="statusBadge" class="px-3 py-1 text-xs font-semibold rounded-full border"></span>
+      </div>
+
+      <!-- Shopee-Style Timeline Section -->
+      <div class="border border-slate-200 rounded-xl p-5 bg-white shadow-xs">
+        <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          <svg class="w-4 h-4 text-[#007932]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          ไทม์ไลน์สถานะการดำเนินการ
+        </h3>
+        
+        <div id="timelineList" class="relative pl-6 space-y-6">
+          <!-- Rendered dynamically by JavaScript -->
+        </div>
       </div>
 
       <!-- Information Table -->
@@ -124,6 +138,7 @@
     const categoryDisplay = document.getElementById("categoryDisplay");
     const titleDisplay = document.getElementById("titleDisplay");
     const descDisplay = document.getElementById("descDisplay");
+    const timelineList = document.getElementById("timelineList");
 
     const statusStyles = {
       finished: {
@@ -148,12 +163,26 @@
       }
     };
 
+    function formatTime(str) {
+      if (!str) return "-";
+      let clean = String(str).replace(/^SENT\s*\(/i, "").replace(/\)$/, "").trim();
+      const parsed = new Date(clean);
+      if (!isNaN(parsed.getTime()) && clean.length > 15) {
+        return parsed.toLocaleString("th-TH", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+      return clean;
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const ticket = input.value.trim();
       if (!ticket) return;
-
-      console.log(`[Ticket Search] Searching for ticket: "${ticket}"`);
 
       btn.disabled = true;
       btn.textContent = "กำลังค้นหา...";
@@ -166,8 +195,6 @@
         const res = await fetch(requestUrl);
         const json = await res.json();
 
-        console.log("[Ticket Search] Response:", json);
-
         if (json.status === "success") {
           const d = json.data;
           ticketDisplay.textContent = "#" + d.ticket;
@@ -179,9 +206,46 @@
 
           const style = statusStyles[d.statusCode] || statusStyles.received;
           statusBadge.className = `px-3 py-1 text-xs font-semibold rounded-full border ${style.badge}`;
-          statusBadge.textContent = d.statusLabel;
+          statusBadge.textContent = d.statusLabel || d.activeStatus;
 
           statusCard.className = `p-4 bg-slate-50 border border-slate-200 border-l-4 ${style.border} rounded-lg flex items-center justify-between`;
+
+          // Render Chronological Timeline
+          timelineList.innerHTML = "";
+          const history = d.statusHistory || [];
+
+          if (history.length === 0) {
+            timelineList.innerHTML = `<p class="text-xs text-slate-400">ยังไม่มีบันทึกสถานะ</p>`;
+          } else {
+            // Reverse so that the latest recorded state appears at the top
+            const reversedHistory = [...history].reverse();
+
+            reversedHistory.forEach((item, index) => {
+              const isLatest = index === 0;
+              const isLastItem = index === reversedHistory.length - 1;
+
+              const stepElement = document.createElement("div");
+              stepElement.className = "relative flex items-start";
+
+              stepElement.innerHTML = `
+                ${!isLastItem ? '<div class="absolute left-[-17px] top-3 bottom-[-24px] w-0.5 bg-slate-200"></div>' : ''}
+                <div class="absolute left-[-23px] top-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center ${isLatest ? 'bg-[#007932] ring-4 ring-emerald-100' : 'bg-slate-300'}">
+                  ${isLatest ? '<div class="w-1.5 h-1.5 rounded-full bg-white"></div>' : ''}
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-semibold ${isLatest ? 'text-[#007932]' : 'text-slate-700'}">
+                    ${item.status}
+                    ${isLatest ? '<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-[#007932]">สถานะล่าสุด</span>' : ''}
+                  </p>
+                  <p class="text-xs text-slate-400 mt-0.5 font-mono">
+                    ${formatTime(item.timestamp)}
+                  </p>
+                </div>
+              `;
+
+              timelineList.appendChild(stepElement);
+            });
+          }
 
           resultContainer.classList.remove("hidden");
         } else {
@@ -189,7 +253,6 @@
           errorBox.classList.remove("hidden");
         }
       } catch (err) {
-        console.error("[Ticket Search] Error:", err);
         errorText.textContent = "ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้ กรุณาลองใหม่อีกครั้ง";
         errorBox.classList.remove("hidden");
       } finally {
