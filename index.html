@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบติดตามสถานะการแจ้งซ่อม - หอพักนักศึกษา</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts Sarabun -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 antialiased py-10 px-4 flex flex-col items-center justify-start">
+
+  <div class="w-full max-w-xl bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <!-- Header Banner -->
+    <div class="bg-[#007932] px-6 py-8 text-white text-center">
+      <h1 class="text-2xl font-bold tracking-wide">ติดตามสถานะการแจ้งซ่อม</h1>
+      <p class="text-emerald-100 text-sm mt-1">หน่วยกิจการนักศึกษาและงานอาคารสถานที่</p>
+    </div>
+
+    <!-- Search Form -->
+    <form id="searchForm" class="p-6 border-b border-slate-100 bg-white">
+      <label for="ticketInput" class="block text-sm font-semibold text-slate-700 mb-2">
+        ระบุหมายเลข Ticket
+      </label>
+      <div class="flex gap-2">
+        <input
+          id="ticketInput"
+          type="text"
+          placeholder="เช่น T-2026-001 หรือกรอกเลขที่ได้รับทางอีเมล"
+          class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007932] focus:bg-white transition"
+          required
+        />
+        <button
+          id="submitBtn"
+          type="submit"
+          class="bg-[#007932] hover:bg-[#006028] disabled:bg-slate-400 text-white font-medium px-6 py-2.5 rounded-lg transition shadow-sm shrink-0"
+        >
+          ตรวจสอบ
+        </button>
+      </div>
+
+      <!-- Error Message Box -->
+      <div id="errorBox" class="hidden mt-4 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg">
+        <span id="errorText"></span>
+      </div>
+    </form>
+
+    <!-- Results Display -->
+    <div id="resultContainer" class="hidden p-6 space-y-6">
+      
+      <!-- Status Card -->
+      <div id="statusCard" class="p-4 bg-slate-50 border border-slate-200 border-l-4 rounded-lg flex items-center justify-between">
+        <div>
+          <span class="text-xs text-slate-500 block uppercase font-medium">Ticket ID</span>
+          <span id="ticketDisplay" class="text-lg font-bold text-slate-900"></span>
+        </div>
+        <span id="statusBadge" class="px-3 py-1 text-xs font-semibold rounded-full border"></span>
+      </div>
+
+      <!-- Information Table -->
+      <div class="border border-slate-200 rounded-xl overflow-hidden text-sm bg-white">
+        <div class="p-3.5 bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
+          ข้อมูลสถานที่
+        </div>
+        <div class="p-4 space-y-2 border-b border-slate-100">
+          <div class="flex justify-between text-slate-600">
+            <span>หอพัก:</span>
+            <span id="dormDisplay" class="font-medium text-slate-900">-</span>
+          </div>
+          <div class="flex justify-between text-slate-600">
+            <span>ห้อง:</span>
+            <span id="roomDisplay" class="font-medium text-slate-900">-</span>
+          </div>
+        </div>
+
+        <div class="p-3.5 bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
+          รายละเอียดการแจ้ง
+        </div>
+        <div class="p-4 space-y-3">
+          <div>
+            <span class="text-xs text-slate-500 block">หมวดหมู่</span>
+            <span id="categoryDisplay" class="font-medium text-slate-800">-</span>
+          </div>
+          <div>
+            <span class="text-xs text-slate-500 block">รายการแจ้งซ่อม</span>
+            <span id="titleDisplay" class="font-medium text-slate-800">-</span>
+          </div>
+          <div>
+            <span class="text-xs text-slate-500 block">รายละเอียดเพิ่มเติม</span>
+            <p id="descDisplay" class="text-slate-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-lg border border-slate-200 mt-1">-</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Support Info -->
+      <div class="text-center pt-2">
+        <p class="text-xs text-slate-400">หากพบปัญหาหรือต้องการความช่วยเหลือเพิ่มเติม ติดต่อ LINE OA:</p>
+        <p class="text-sm font-semibold text-[#007932] mt-0.5">@413hhyaf</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Paste your deployed Apps Script Web App URL here
+    const SCRIPT_API_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+    const form = document.getElementById("searchForm");
+    const input = document.getElementById("ticketInput");
+    const btn = document.getElementById("submitBtn");
+    const errorBox = document.getElementById("errorBox");
+    const errorText = document.getElementById("errorText");
+    const resultContainer = document.getElementById("resultContainer");
+
+    const statusBadge = document.getElementById("statusBadge");
+    const statusCard = document.getElementById("statusCard");
+    const ticketDisplay = document.getElementById("ticketDisplay");
+    const dormDisplay = document.getElementById("dormDisplay");
+    const roomDisplay = document.getElementById("roomDisplay");
+    const categoryDisplay = document.getElementById("categoryDisplay");
+    const titleDisplay = document.getElementById("titleDisplay");
+    const descDisplay = document.getElementById("descDisplay");
+
+    const statusStyles = {
+      finished: {
+        badge: "bg-emerald-100 text-emerald-800 border-emerald-300",
+        border: "border-l-emerald-500"
+      },
+      maintenance: {
+        badge: "bg-amber-100 text-amber-800 border-amber-300",
+        border: "border-l-amber-500"
+      },
+      purchase: {
+        badge: "bg-purple-100 text-purple-800 border-purple-300",
+        border: "border-l-purple-500"
+      },
+      rejected: {
+        badge: "bg-rose-100 text-rose-800 border-rose-300",
+        border: "border-l-rose-500"
+      },
+      received: {
+        badge: "bg-blue-100 text-blue-800 border-blue-300",
+        border: "border-l-blue-500"
+      }
+    };
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const ticket = input.value.trim();
+      if (!ticket) return;
+
+      btn.disabled = true;
+      btn.textContent = "กำลังค้นหา...";
+      errorBox.classList.add("hidden");
+      resultContainer.classList.add("hidden");
+
+      try {
+        const res = await fetch(`${SCRIPT_API_URL}?ticket=${encodeURIComponent(ticket)}`);
+        const json = await res.json();
+
+        if (json.status === "success") {
+          const d = json.data;
+          ticketDisplay.textContent = "#" + d.ticket;
+          dormDisplay.textContent = d.dorm || "-";
+          roomDisplay.textContent = d.room || "-";
+          categoryDisplay.textContent = d.category || "-";
+          titleDisplay.textContent = d.title || "-";
+          descDisplay.textContent = d.description || "-";
+
+          const style = statusStyles[d.statusCode] || statusStyles.received;
+          statusBadge.className = `px-3 py-1 text-xs font-semibold rounded-full border ${style.badge}`;
+          statusBadge.textContent = d.statusLabel;
+
+          statusCard.className = `p-4 bg-slate-50 border border-slate-200 border-l-4 ${style.border} rounded-lg flex items-center justify-between`;
+
+          resultContainer.classList.remove("hidden");
+        } else {
+          errorText.textContent = json.message || "ไม่พบข้อมูลหมายเลข Ticket นี้";
+          errorBox.classList.remove("hidden");
+        }
+      } catch (err) {
+        errorText.textContent = "ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้ กรุณาลองใหม่อีกครั้ง";
+        errorBox.classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "ตรวจสอบ";
+      }
+    });
+  </script>
+</body>
+</html>
