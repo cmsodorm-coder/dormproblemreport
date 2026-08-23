@@ -196,7 +196,21 @@
         let minute = parseInt(dmyMatch[5] || 0, 10);
         let second = parseInt(dmyMatch[6] || 0, 10);
 
-        if (year > 2400) year -= 543; // Convert Buddhist Year (e.g. 2569) to AD
+        if (year > 2400) year -= 543; // Convert Thai BE year to CE for Date calculation
+        return new Date(year, month, day, hour, minute, second).getTime();
+      }
+
+      // Match YYYY-MM-DD
+      const ymdMatch = clean.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+      if (ymdMatch) {
+        let year = parseInt(ymdMatch[1], 10);
+        let month = parseInt(ymdMatch[2], 10) - 1;
+        let day = parseInt(ymdMatch[3], 10);
+        let hour = parseInt(ymdMatch[4] || 0, 10);
+        let minute = parseInt(ymdMatch[5] || 0, 10);
+        let second = parseInt(ymdMatch[6] || 0, 10);
+
+        if (year > 2400) year -= 543;
         return new Date(year, month, day, hour, minute, second).getTime();
       }
 
@@ -204,6 +218,7 @@
       return isNaN(parsed) ? 0 : parsed;
     }
 
+    // Always outputs: DD/MM/25XX HH:mm:ss in พ.ศ.
     function formatTime(str) {
       if (!str) return "-";
       let timeMs = parseTimestamp(str);
@@ -220,18 +235,28 @@
       return `${day}/${month}/${year} ${hour}:${minute}:${sec}`;
     }
 
+    // Always outputs: DD/MM/25XX in พ.ศ.
     function formatThaiDateDisplay(dateStr) {
       if (!dateStr) return "-";
-      try {
-        const clean = String(dateStr).trim();
-        const parts = clean.split("-");
-        if (parts.length === 3) {
-          const yr = parseInt(parts[0], 10);
-          const thYr = yr > 2400 ? yr : yr + 543;
-          return `${parseInt(parts[2], 10)}/${parseInt(parts[1], 10)}/${thYr}`;
-        }
-      } catch (e) {}
-      return dateStr;
+      let timeMs = parseTimestamp(dateStr);
+      if (timeMs === 0) {
+        try {
+          const parts = String(dateStr).trim().split(/[\/\-]/);
+          if (parts.length === 3) {
+            let yr = parseInt(parts[0].length === 4 ? parts[0] : parts[2], 10);
+            let mo = parseInt(parts[1], 10);
+            let da = parseInt(parts[0].length === 4 ? parts[2] : parts[0], 10);
+            let thYr = yr > 2400 ? yr : yr + 543;
+            return `${da}/${mo}/${thYr}`;
+          }
+        } catch (e) {}
+        return dateStr;
+      }
+      const d = new Date(timeMs);
+      const day = d.getDate();
+      const month = d.getMonth() + 1;
+      const year = d.getFullYear() > 2400 ? d.getFullYear() : d.getFullYear() + 543;
+      return `${day}/${month}/${year}`;
     }
 
     form.addEventListener("submit", async (e) => {
@@ -275,7 +300,7 @@
             appointmentAlert.classList.add("hidden");
           }
 
-          // Sort History Chronologically: Most Recent on Top (Desc)
+          // Chronological Sort: Most Recent (Desc) on top
           timelineList.innerHTML = "";
           const history = d.statusHistory || [];
 
