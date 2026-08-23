@@ -135,7 +135,7 @@
     </div>
   </div>
 
-  <script>
+ <script>
     const SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbxPW-8OMeJjTeuFnZa6_yIKG6GnMqlxmYnU6wnCif_fbpCAfRewV63c32G0U3jGyP-_JA/exec";
 
     const form = document.getElementById("searchForm");
@@ -164,8 +164,8 @@
         border: "border-l-emerald-500"
       },
       maintenance: {
-        badge: "bg-amber-100 text-amber-800 border-amber-300",
-        border: "border-l-amber-500"
+        badge: "bg-teal-100 text-teal-800 border-teal-300",
+        border: "border-l-[#0FA18E]"
       },
       purchase: {
         badge: "bg-purple-100 text-purple-800 border-purple-300",
@@ -181,16 +181,14 @@
       }
     };
 
-    // Standardize any datetime string into pure components { day, month, beYear, epochMs }
     function parseDateComponents(rawStr) {
       if (!rawStr) return null;
       let clean = String(rawStr).replace(/^SENT\s*\(/i, "").replace(/\)$/, "").trim();
+      if (clean.includes("|")) clean = clean.split("|")[0].trim();
 
       let day, month, year, hour = 0, minute = 0, second = 0;
 
-      // Check for ISO/SQL format: YYYY-MM-DD or YYYY/MM/DD
       const isoMatch = clean.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
-      // Check for standard format: DD/MM/YYYY or MM/DD/YYYY
       const dmyMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
 
       if (isoMatch) {
@@ -208,7 +206,6 @@
         minute = parseInt(dmyMatch[5] || 0, 10);
         second = parseInt(dmyMatch[6] || 0, 10);
 
-        // Disambiguate day vs month
         if (p1 > 12) {
           day = p1;
           month = p2;
@@ -216,7 +213,6 @@
           day = p2;
           month = p1;
         } else {
-          // Default to DD/MM/YYYY
           day = p1;
           month = p2;
         }
@@ -234,7 +230,6 @@
         };
       }
 
-      // Convert year to CE for epoch timestamp and BE (พ.ศ.) for Thai UI display
       let ceYear = year > 2400 ? year - 543 : year;
       let beYear = year > 2400 ? year : year + 543;
       let epochMs = new Date(ceYear, month - 1, day, hour, minute, second).getTime();
@@ -293,16 +288,16 @@
 
           statusCard.className = `p-4 bg-slate-50 border border-slate-200 border-l-4 ${style.border} rounded-lg flex items-center justify-between`;
 
-          // Appointment box check
-          const hasRepairStatus = currentStatus.includes("ช่างจะเข้าซ่อมในห้อง");
-          if (hasRepairStatus && d.appointmentDate) {
-            appointmentDateText.textContent = formatThaiDateDisplay(d.appointmentDate);
+          // Appointment banner check: show if appointmentDate exists anywhere
+          const resolvedAppointmentDate = d.appointmentDate || "";
+          if (resolvedAppointmentDate && !currentStatus.includes("สำเร็จ") && !currentStatus.includes("ไม่รับคำร้อง")) {
+            appointmentDateText.textContent = formatThaiDateDisplay(resolvedAppointmentDate);
             appointmentAlert.classList.remove("hidden");
           } else {
             appointmentAlert.classList.add("hidden");
           }
 
-          // Sort History: Most Recent (Desc) on Top
+          // Render Chronological Timeline (Most Recent on top)
           timelineList.innerHTML = "";
           const history = d.statusHistory || [];
 
@@ -320,13 +315,14 @@
               const isLastItem = index === sortedHistory.length - 1;
               const itemStatus = item.status || "";
 
-              const stepAppointmentDate = item.appointmentDate || (itemStatus.includes("ช่างจะเข้าซ่อมในห้อง") ? d.appointmentDate : null);
+              // Resolve appointment date for this step
+              const stepAppointmentDate = item.appointmentDate || (itemStatus.includes("ช่างจะเข้าซ่อม") ? resolvedAppointmentDate : null);
 
               const stepElement = document.createElement("div");
               stepElement.className = "relative flex items-start";
 
               let appointmentBadge = "";
-              if (itemStatus.includes("ช่างจะเข้าซ่อมในห้อง") && stepAppointmentDate) {
+              if (itemStatus.includes("ช่างจะเข้าซ่อม") && stepAppointmentDate) {
                 appointmentBadge = `
                   <div class="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-900 border border-amber-200 text-xs font-medium">
                     <span>📅 กำหนดการเข้าซ่อม:</span>
