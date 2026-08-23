@@ -18,9 +18,9 @@
 
   <div class="w-full max-w-xl bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
     <!-- Header Banner -->
-    <div class="bg-[#007932] px-6 py-8 text-white text-center">
+    <div class="bg-[#0FA18E] px-6 py-8 text-white text-center">
       <h1 class="text-2xl font-bold tracking-wide">ติดตามสถานะการแจ้งซ่อม</h1>
-      <p class="text-emerald-100 text-sm mt-1">หน่วยกิจการนักศึกษาและงานอาคารสถานที่</p>
+      <p class="text-teal-100 text-sm mt-1">หน่วยกิจการนักศึกษาและงานอาคารสถานที่</p>
     </div>
 
     <!-- Search Form -->
@@ -33,13 +33,13 @@
           id="ticketInput"
           type="text"
           placeholder="เช่น M14HT6 หรือกรอกเลขที่ได้รับทางอีเมล"
-          class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007932] focus:bg-white transition"
+          class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0FA18E] focus:bg-white transition"
           required
         />
         <button
           id="submitBtn"
           type="submit"
-          class="bg-[#007932] hover:bg-[#006028] disabled:bg-slate-400 text-white font-medium px-6 py-2.5 rounded-lg transition shadow-sm shrink-0"
+          class="bg-[#0FA18E] hover:bg-[#0d8b7a] disabled:bg-slate-400 text-white font-medium px-6 py-2.5 rounded-lg transition shadow-sm shrink-0"
         >
           ตรวจสอบ
         </button>
@@ -63,7 +63,7 @@
         <span id="statusBadge" class="px-3 py-1 text-xs font-semibold rounded-full border"></span>
       </div>
 
-      <!-- Appointment Alert Box (Shows when "ช่างจะเข้าซ่อมในห้อง") -->
+      <!-- Appointment Alert Box -->
       <div id="appointmentAlert" class="hidden p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
         <div class="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -78,10 +78,10 @@
         </div>
       </div>
 
-      <!-- Shopee-Style Timeline Section -->
+      <!-- Timeline Section -->
       <div class="border border-slate-200 rounded-xl p-5 bg-white shadow-xs">
         <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-          <svg class="w-4 h-4 text-[#007932]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 text-[#0FA18E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
           ไทม์ไลน์สถานะการดำเนินการ
@@ -130,12 +130,13 @@
       <!-- Footer Support Info -->
       <div class="text-center pt-2">
         <p class="text-xs text-slate-400">หากพบปัญหาหรือต้องการความช่วยเหลือเพิ่มเติม ติดต่อ LINE OA:</p>
-        <p class="text-sm font-semibold text-[#007932] mt-0.5">@413hhyaf</p>
+        <p class="text-sm font-semibold text-[#0FA18E] mt-0.5">@413hhyaf</p>
+        <p class="text-[11px] text-slate-400 mt-2">Designed by Tann and Gene in Chiang Mai</p>
       </div>
     </div>
   </div>
 
- <script>
+  <script>
     const SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbxPW-8OMeJjTeuFnZa6_yIKG6GnMqlxmYnU6wnCif_fbpCAfRewV63c32G0U3jGyP-_JA/exec";
 
     const form = document.getElementById("searchForm");
@@ -180,6 +181,30 @@
         border: "border-l-blue-500"
       }
     };
+
+    // Robust Date Converter for YYYY-MM-DD or DD/MM/YYYY into Thai BE format (D/M/2569)
+    function formatThaiDateDisplay(dateStr) {
+      if (!dateStr || String(dateStr).trim() === "" || dateStr === "null" || dateStr === "undefined") return "";
+      try {
+        const clean = String(dateStr).replace(/^SENT\s*\(/i, "").replace(/\)$/, "").trim();
+        const parts = clean.split(/[\/\-T\s]/);
+        if (parts.length >= 3) {
+          let yr, mo, da;
+          if (parts[0].length === 4) { // YYYY-MM-DD
+            yr = parseInt(parts[0], 10);
+            mo = parseInt(parts[1], 10);
+            da = parseInt(parts[2], 10);
+          } else { // DD/MM/YYYY
+            da = parseInt(parts[0], 10);
+            mo = parseInt(parts[1], 10);
+            yr = parseInt(parts[2], 10);
+          }
+          const thYr = yr > 2400 ? yr : yr + 543;
+          return `${da}/${mo}/${thYr}`;
+        }
+      } catch (e) {}
+      return String(dateStr);
+    }
 
     function parseDateComponents(rawStr) {
       if (!rawStr) return null;
@@ -250,12 +275,6 @@
       return `${d}/${m}/${parsed.beYear} ${h}:${min}:${s}`;
     }
 
-    function formatThaiDateDisplay(dateStr) {
-      const parsed = parseDateComponents(dateStr);
-      if (!parsed) return dateStr || "-";
-      return `${parsed.day}/${parsed.month}/${parsed.beYear}`;
-    }
-
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const ticket = input.value.trim();
@@ -288,16 +307,16 @@
 
           statusCard.className = `p-4 bg-slate-50 border border-slate-200 border-l-4 ${style.border} rounded-lg flex items-center justify-between`;
 
-          // Appointment banner check: show if appointmentDate exists anywhere
-          const resolvedAppointmentDate = d.appointmentDate || "";
-          if (resolvedAppointmentDate && !currentStatus.includes("สำเร็จ") && !currentStatus.includes("ไม่รับคำร้อง")) {
+          // Appointment banner check
+          const resolvedAppointmentDate = String(d.appointmentDate || "").trim();
+          if (resolvedAppointmentDate && resolvedAppointmentDate !== "null" && resolvedAppointmentDate !== "undefined") {
             appointmentDateText.textContent = formatThaiDateDisplay(resolvedAppointmentDate);
             appointmentAlert.classList.remove("hidden");
           } else {
             appointmentAlert.classList.add("hidden");
           }
 
-          // Render Chronological Timeline (Most Recent on top)
+          // Chronological Timeline rendering (latest timestamp on top)
           timelineList.innerHTML = "";
           const history = d.statusHistory || [];
 
@@ -313,33 +332,33 @@
             sortedHistory.forEach((item, index) => {
               const isLatest = index === 0;
               const isLastItem = index === sortedHistory.length - 1;
-              const itemStatus = item.status || "";
+              const itemStatus = String(item.status || "");
 
-              // Resolve appointment date for this step
-              const stepAppointmentDate = item.appointmentDate || (itemStatus.includes("ช่างจะเข้าซ่อม") ? resolvedAppointmentDate : null);
-
-              const stepElement = document.createElement("div");
-              stepElement.className = "relative flex items-start";
+              // Find appointment date if this step represents room entrance
+              const stepAppt = item.appointmentDate || (itemStatus.includes("ช่างจะเข้าซ่อม") ? resolvedAppointmentDate : "");
 
               let appointmentBadge = "";
-              if (itemStatus.includes("ช่างจะเข้าซ่อม") && stepAppointmentDate) {
+              if (itemStatus.includes("ช่างจะเข้าซ่อม") && stepAppt && stepAppt !== "null") {
                 appointmentBadge = `
                   <div class="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-900 border border-amber-200 text-xs font-medium">
                     <span>📅 กำหนดการเข้าซ่อม:</span>
-                    <strong class="text-amber-950 font-bold">${formatThaiDateDisplay(stepAppointmentDate)}</strong>
+                    <strong class="text-amber-950 font-bold">${formatThaiDateDisplay(stepAppt)}</strong>
                   </div>
                 `;
               }
 
+              const stepElement = document.createElement("div");
+              stepElement.className = "relative flex items-start";
+
               stepElement.innerHTML = `
                 ${!isLastItem ? '<div class="absolute left-[-17px] top-3 bottom-[-24px] w-0.5 bg-slate-200"></div>' : ''}
-                <div class="absolute left-[-23px] top-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center ${isLatest ? 'bg-[#007932] ring-4 ring-emerald-100' : 'bg-slate-300'}">
+                <div class="absolute left-[-23px] top-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center ${isLatest ? 'bg-[#0FA18E] ring-4 ring-teal-100' : 'bg-slate-300'}">
                   ${isLatest ? '<div class="w-1.5 h-1.5 rounded-full bg-white"></div>' : ''}
                 </div>
                 <div class="flex-1">
-                  <p class="text-sm font-semibold ${isLatest ? 'text-[#007932]' : 'text-slate-700'}">
+                  <p class="text-sm font-semibold ${isLatest ? 'text-[#0FA18E]' : 'text-slate-700'}">
                     ${itemStatus}
-                    ${isLatest ? '<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-[#007932]">สถานะล่าสุด</span>' : ''}
+                    ${isLatest ? '<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-100 text-[#0FA18E]">สถานะล่าสุด</span>' : ''}
                   </p>
                   ${appointmentBadge}
                   <p class="text-xs text-slate-400 mt-0.5 font-mono">
