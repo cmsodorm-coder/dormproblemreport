@@ -63,6 +63,21 @@
         <span id="statusBadge" class="px-3 py-1 text-xs font-semibold rounded-full border"></span>
       </div>
 
+      <!-- Appointment Alert Box (Shows when "ช่างจะเข้าซ่อมในห้อง") -->
+      <div id="appointmentAlert" class="hidden p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+        <div class="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-amber-900">กำหนดการเข้าซ่อมในห้อง</h4>
+          <p class="text-xs text-amber-700 mt-0.5">ช่างมีกำหนดเข้าตรวจซ่อมในห้องพักของท่านในวันที่:</p>
+          <div id="appointmentDateText" class="mt-1.5 text-base font-bold text-amber-950 font-mono">-</div>
+          <p class="text-[11px] text-amber-600 mt-1">กรุณาจัดเก็บทรัพย์สินมีค่าให้เรียบร้อยก่อนช่างเข้าดำเนินการ</p>
+        </div>
+      </div>
+
       <!-- Shopee-Style Timeline Section -->
       <div class="border border-slate-200 rounded-xl p-5 bg-white shadow-xs">
         <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
@@ -140,6 +155,9 @@
     const descDisplay = document.getElementById("descDisplay");
     const timelineList = document.getElementById("timelineList");
 
+    const appointmentAlert = document.getElementById("appointmentAlert");
+    const appointmentDateText = document.getElementById("appointmentDateText");
+
     const statusStyles = {
       finished: {
         badge: "bg-emerald-100 text-emerald-800 border-emerald-300",
@@ -179,6 +197,19 @@
       return clean;
     }
 
+    function formatThaiDateDisplay(dateStr) {
+      if (!dateStr) return "-";
+      try {
+        const parts = dateStr.split("-");
+        if (parts.length === 3) {
+          const yr = parseInt(parts[0], 10);
+          const thYr = yr > 2400 ? yr : yr + 543;
+          return `${parseInt(parts[2], 10)}/${parseInt(parts[1], 10)}/${thYr}`;
+        }
+      } catch (e) {}
+      return dateStr;
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const ticket = input.value.trim();
@@ -210,6 +241,14 @@
 
           statusCard.className = `p-4 bg-slate-50 border border-slate-200 border-l-4 ${style.border} rounded-lg flex items-center justify-between`;
 
+          // Appointment box display logic
+          if (d.activeStatus && d.activeStatus.includes("ช่างจะเข้าซ่อม") && d.appointmentDate) {
+            appointmentDateText.textContent = formatThaiDateDisplay(d.appointmentDate);
+            appointmentAlert.classList.remove("hidden");
+          } else {
+            appointmentAlert.classList.add("hidden");
+          }
+
           // Render Chronological Timeline
           timelineList.innerHTML = "";
           const history = d.statusHistory || [];
@@ -217,7 +256,6 @@
           if (history.length === 0) {
             timelineList.innerHTML = `<p class="text-xs text-slate-400">ยังไม่มีบันทึกสถานะ</p>`;
           } else {
-            // Reverse so that the latest recorded state appears at the top
             const reversedHistory = [...history].reverse();
 
             reversedHistory.forEach((item, index) => {
@@ -226,6 +264,15 @@
 
               const stepElement = document.createElement("div");
               stepElement.className = "relative flex items-start";
+
+              let appointmentBadge = "";
+              if (item.appointmentDate) {
+                appointmentBadge = `
+                  <div class="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-medium">
+                    📅 นัดหมายเข้าห้อง: <strong>${formatThaiDateDisplay(item.appointmentDate)}</strong>
+                  </div>
+                `;
+              }
 
               stepElement.innerHTML = `
                 ${!isLastItem ? '<div class="absolute left-[-17px] top-3 bottom-[-24px] w-0.5 bg-slate-200"></div>' : ''}
@@ -237,6 +284,7 @@
                     ${item.status}
                     ${isLatest ? '<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-[#007932]">สถานะล่าสุด</span>' : ''}
                   </p>
+                  ${appointmentBadge}
                   <p class="text-xs text-slate-400 mt-0.5 font-mono">
                     ${formatTime(item.timestamp)}
                   </p>
