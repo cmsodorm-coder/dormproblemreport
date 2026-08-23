@@ -200,7 +200,8 @@
     function formatThaiDateDisplay(dateStr) {
       if (!dateStr) return "-";
       try {
-        const parts = dateStr.split("-");
+        const clean = String(dateStr).trim();
+        const parts = clean.split("-");
         if (parts.length === 3) {
           const yr = parseInt(parts[0], 10);
           const thYr = yr > 2400 ? yr : yr + 543;
@@ -235,14 +236,16 @@
           titleDisplay.textContent = d.title || "-";
           descDisplay.textContent = d.description || "-";
 
+          const currentStatus = d.activeStatus || d.statusLabel || "";
           const style = statusStyles[d.statusCode] || statusStyles.received;
           statusBadge.className = `px-3 py-1 text-xs font-semibold rounded-full border ${style.badge}`;
-          statusBadge.textContent = d.statusLabel || d.activeStatus;
+          statusBadge.textContent = d.statusLabel || currentStatus;
 
           statusCard.className = `p-4 bg-slate-50 border border-slate-200 border-l-4 ${style.border} rounded-lg flex items-center justify-between`;
 
-          // Appointment box display logic
-          if (d.activeStatus && d.activeStatus.includes("ช่างจะเข้าซ่อม") && d.appointmentDate) {
+          // Appointment banner check
+          const hasRepairStatus = currentStatus.includes("ช่างจะเข้าซ่อมในห้อง");
+          if (hasRepairStatus && d.appointmentDate) {
             appointmentDateText.textContent = formatThaiDateDisplay(d.appointmentDate);
             appointmentAlert.classList.remove("hidden");
           } else {
@@ -261,15 +264,20 @@
             reversedHistory.forEach((item, index) => {
               const isLatest = index === 0;
               const isLastItem = index === reversedHistory.length - 1;
+              const itemStatus = item.status || "";
+
+              // Resolve appointment date for "ช่างจะเข้าซ่อมในห้อง" step
+              const stepAppointmentDate = item.appointmentDate || (itemStatus.includes("ช่างจะเข้าซ่อมในห้อง") ? d.appointmentDate : null);
 
               const stepElement = document.createElement("div");
               stepElement.className = "relative flex items-start";
 
               let appointmentBadge = "";
-              if (item.appointmentDate) {
+              if (itemStatus.includes("ช่างจะเข้าซ่อมในห้อง") && stepAppointmentDate) {
                 appointmentBadge = `
-                  <div class="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-medium">
-                    📅 นัดหมายเข้าห้อง: <strong>${formatThaiDateDisplay(item.appointmentDate)}</strong>
+                  <div class="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-900 border border-amber-200 text-xs font-medium">
+                    <span>📅 กำหนดการเข้าซ่อม:</span>
+                    <strong class="text-amber-950 font-bold">${formatThaiDateDisplay(stepAppointmentDate)}</strong>
                   </div>
                 `;
               }
@@ -281,7 +289,7 @@
                 </div>
                 <div class="flex-1">
                   <p class="text-sm font-semibold ${isLatest ? 'text-[#007932]' : 'text-slate-700'}">
-                    ${item.status}
+                    ${itemStatus}
                     ${isLatest ? '<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-[#007932]">สถานะล่าสุด</span>' : ''}
                   </p>
                   ${appointmentBadge}
