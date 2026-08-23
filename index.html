@@ -17,10 +17,10 @@
 <body class="bg-slate-100 min-h-screen text-slate-800 antialiased py-10 px-4 flex flex-col items-center justify-start">
 
   <div class="w-full max-w-xl bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-    <!-- Header Banner -->
-    <div class="bg-[#0FA18E] px-6 py-8 text-white text-center">
+    <!-- Header Banner: Original Green -->
+    <div class="bg-[#007932] px-6 py-8 text-white text-center">
       <h1 class="text-2xl font-bold tracking-wide">ติดตามสถานะการแจ้งซ่อม</h1>
-      <p class="text-teal-100 text-sm mt-1">หน่วยกิจการนักศึกษาและงานอาคารสถานที่</p>
+      <p class="text-emerald-100 text-sm mt-1">หน่วยกิจการนักศึกษาและงานอาคารสถานที่</p>
     </div>
 
     <!-- Search Form -->
@@ -33,13 +33,13 @@
           id="ticketInput"
           type="text"
           placeholder="เช่น M14HT6 หรือกรอกเลขที่ได้รับทางอีเมล"
-          class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0FA18E] focus:bg-white transition"
+          class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007932] focus:bg-white transition"
           required
         />
         <button
           id="submitBtn"
           type="submit"
-          class="bg-[#0FA18E] hover:bg-[#0d8b7a] disabled:bg-slate-400 text-white font-medium px-6 py-2.5 rounded-lg transition shadow-sm shrink-0"
+          class="bg-[#007932] hover:bg-[#006028] disabled:bg-slate-400 text-white font-medium px-6 py-2.5 rounded-lg transition shadow-sm shrink-0"
         >
           ตรวจสอบ
         </button>
@@ -81,7 +81,7 @@
       <!-- Timeline Section -->
       <div class="border border-slate-200 rounded-xl p-5 bg-white shadow-xs">
         <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-          <svg class="w-4 h-4 text-[#0FA18E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 text-[#007932]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
           ไทม์ไลน์สถานะการดำเนินการ
@@ -130,7 +130,7 @@
       <!-- Footer Support Info -->
       <div class="text-center pt-2">
         <p class="text-xs text-slate-400">หากพบปัญหาหรือต้องการความช่วยเหลือเพิ่มเติม ติดต่อ LINE OA:</p>
-        <p class="text-sm font-semibold text-[#0FA18E] mt-0.5">@413hhyaf</p>
+        <p class="text-sm font-semibold text-[#007932] mt-0.5">@413hhyaf</p>
         <p class="text-[11px] text-slate-400 mt-2">Designed by Tann and Gene in Chiang Mai</p>
       </div>
     </div>
@@ -165,8 +165,8 @@
         border: "border-l-emerald-500"
       },
       maintenance: {
-        badge: "bg-teal-100 text-teal-800 border-teal-300",
-        border: "border-l-[#0FA18E]"
+        badge: "bg-amber-100 text-amber-800 border-amber-300",
+        border: "border-l-amber-500"
       },
       purchase: {
         badge: "bg-purple-100 text-purple-800 border-purple-300",
@@ -182,7 +182,6 @@
       }
     };
 
-    // Robust Date Converter for YYYY-MM-DD or DD/MM/YYYY into Thai BE format (D/M/2569)
     function formatThaiDateDisplay(dateStr) {
       if (!dateStr || String(dateStr).trim() === "" || dateStr === "null" || dateStr === "undefined") return "";
       try {
@@ -190,11 +189,11 @@
         const parts = clean.split(/[\/\-T\s]/);
         if (parts.length >= 3) {
           let yr, mo, da;
-          if (parts[0].length === 4) { // YYYY-MM-DD
+          if (parts[0].length === 4) {
             yr = parseInt(parts[0], 10);
             mo = parseInt(parts[1], 10);
             da = parseInt(parts[2], 10);
-          } else { // DD/MM/YYYY
+          } else {
             da = parseInt(parts[0], 10);
             mo = parseInt(parts[1], 10);
             yr = parseInt(parts[2], 10);
@@ -307,8 +306,23 @@
 
           statusCard.className = `p-4 bg-slate-50 border border-slate-200 border-l-4 ${style.border} rounded-lg flex items-center justify-between`;
 
-          // Appointment banner check
-          const resolvedAppointmentDate = String(d.appointmentDate || "").trim();
+          // Appointment resolution: check top-level appointmentDate or scan history items
+          let resolvedAppointmentDate = String(d.appointmentDate || "").trim();
+          const history = d.statusHistory || [];
+
+          if (!resolvedAppointmentDate || resolvedAppointmentDate === "null") {
+            for (const h of history) {
+              if (h.appointmentDate && String(h.appointmentDate).trim() !== "null") {
+                resolvedAppointmentDate = String(h.appointmentDate).trim();
+                break;
+              }
+              if (String(h.timestamp || "").includes("| นัดหมาย:")) {
+                resolvedAppointmentDate = String(h.timestamp).split("| นัดหมาย:")[1].trim();
+                break;
+              }
+            }
+          }
+
           if (resolvedAppointmentDate && resolvedAppointmentDate !== "null" && resolvedAppointmentDate !== "undefined") {
             appointmentDateText.textContent = formatThaiDateDisplay(resolvedAppointmentDate);
             appointmentAlert.classList.remove("hidden");
@@ -316,9 +330,8 @@
             appointmentAlert.classList.add("hidden");
           }
 
-          // Chronological Timeline rendering (latest timestamp on top)
+          // Chronological Timeline rendering
           timelineList.innerHTML = "";
-          const history = d.statusHistory || [];
 
           if (history.length === 0) {
             timelineList.innerHTML = `<p class="text-xs text-slate-400">ยังไม่มีบันทึกสถานะ</p>`;
@@ -334,11 +347,17 @@
               const isLastItem = index === sortedHistory.length - 1;
               const itemStatus = String(item.status || "");
 
-              // Find appointment date if this step represents room entrance
-              const stepAppt = item.appointmentDate || (itemStatus.includes("ช่างจะเข้าซ่อม") ? resolvedAppointmentDate : "");
+              // Check for appointment date on this specific step
+              let stepAppt = item.appointmentDate;
+              if (!stepAppt && String(item.timestamp || "").includes("| นัดหมาย:")) {
+                stepAppt = String(item.timestamp).split("| นัดหมาย:")[1].trim();
+              }
+              if (!stepAppt && itemStatus.includes("ช่างจะเข้าซ่อม")) {
+                stepAppt = resolvedAppointmentDate;
+              }
 
               let appointmentBadge = "";
-              if (itemStatus.includes("ช่างจะเข้าซ่อม") && stepAppt && stepAppt !== "null") {
+              if (itemStatus.includes("ช่างจะเข้าซ่อม") && stepAppt && String(stepAppt).trim() !== "null") {
                 appointmentBadge = `
                   <div class="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-900 border border-amber-200 text-xs font-medium">
                     <span>📅 กำหนดการเข้าซ่อม:</span>
@@ -352,13 +371,13 @@
 
               stepElement.innerHTML = `
                 ${!isLastItem ? '<div class="absolute left-[-17px] top-3 bottom-[-24px] w-0.5 bg-slate-200"></div>' : ''}
-                <div class="absolute left-[-23px] top-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center ${isLatest ? 'bg-[#0FA18E] ring-4 ring-teal-100' : 'bg-slate-300'}">
+                <div class="absolute left-[-23px] top-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center ${isLatest ? 'bg-[#007932] ring-4 ring-emerald-100' : 'bg-slate-300'}">
                   ${isLatest ? '<div class="w-1.5 h-1.5 rounded-full bg-white"></div>' : ''}
                 </div>
                 <div class="flex-1">
-                  <p class="text-sm font-semibold ${isLatest ? 'text-[#0FA18E]' : 'text-slate-700'}">
+                  <p class="text-sm font-semibold ${isLatest ? 'text-[#007932]' : 'text-slate-700'}">
                     ${itemStatus}
-                    ${isLatest ? '<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-100 text-[#0FA18E]">สถานะล่าสุด</span>' : ''}
+                    ${isLatest ? '<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-[#007932]">สถานะล่าสุด</span>' : ''}
                   </p>
                   ${appointmentBadge}
                   <p class="text-xs text-slate-400 mt-0.5 font-mono">
