@@ -181,82 +181,84 @@
       }
     };
 
-    // Robust parser converting Thai BE & CE strings to reliable epoch timestamps
-    function parseTimestamp(rawStr) {
-      if (!rawStr) return 0;
+    // Standardize any datetime string into pure components { day, month, beYear, epochMs }
+    function parseDateComponents(rawStr) {
+      if (!rawStr) return null;
       let clean = String(rawStr).replace(/^SENT\s*\(/i, "").replace(/\)$/, "").trim();
-      
-      // Match DD/MM/YYYY HH:mm(:ss) or DD-MM-YYYY HH:mm(:ss)
+
+      let day, month, year, hour = 0, minute = 0, second = 0;
+
+      // Check for ISO/SQL format: YYYY-MM-DD or YYYY/MM/DD
+      const isoMatch = clean.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+      // Check for standard format: DD/MM/YYYY or MM/DD/YYYY
       const dmyMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
-      if (dmyMatch) {
-        let day = parseInt(dmyMatch[1], 10);
-        let month = parseInt(dmyMatch[2], 10) - 1;
-        let year = parseInt(dmyMatch[3], 10);
-        let hour = parseInt(dmyMatch[4] || 0, 10);
-        let minute = parseInt(dmyMatch[5] || 0, 10);
-        let second = parseInt(dmyMatch[6] || 0, 10);
 
-        if (year > 2400) year -= 543; // Convert Thai BE year to CE for Date calculation
-        return new Date(year, month, day, hour, minute, second).getTime();
+      if (isoMatch) {
+        year = parseInt(isoMatch[1], 10);
+        month = parseInt(isoMatch[2], 10);
+        day = parseInt(isoMatch[3], 10);
+        hour = parseInt(isoMatch[4] || 0, 10);
+        minute = parseInt(isoMatch[5] || 0, 10);
+        second = parseInt(isoMatch[6] || 0, 10);
+      } else if (dmyMatch) {
+        let p1 = parseInt(dmyMatch[1], 10);
+        let p2 = parseInt(dmyMatch[2], 10);
+        year = parseInt(dmyMatch[3], 10);
+        hour = parseInt(dmyMatch[4] || 0, 10);
+        minute = parseInt(dmyMatch[5] || 0, 10);
+        second = parseInt(dmyMatch[6] || 0, 10);
+
+        // Disambiguate day vs month
+        if (p1 > 12) {
+          day = p1;
+          month = p2;
+        } else if (p2 > 12) {
+          day = p2;
+          month = p1;
+        } else {
+          // Default to DD/MM/YYYY
+          day = p1;
+          month = p2;
+        }
+      } else {
+        const parsed = new Date(clean);
+        if (isNaN(parsed.getTime())) return null;
+        return {
+          day: parsed.getDate(),
+          month: parsed.getMonth() + 1,
+          beYear: parsed.getFullYear() > 2400 ? parsed.getFullYear() : parsed.getFullYear() + 543,
+          hour: parsed.getHours(),
+          minute: parsed.getMinutes(),
+          second: parsed.getSeconds(),
+          epochMs: parsed.getTime()
+        };
       }
 
-      // Match YYYY-MM-DD
-      const ymdMatch = clean.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
-      if (ymdMatch) {
-        let year = parseInt(ymdMatch[1], 10);
-        let month = parseInt(ymdMatch[2], 10) - 1;
-        let day = parseInt(ymdMatch[3], 10);
-        let hour = parseInt(ymdMatch[4] || 0, 10);
-        let minute = parseInt(ymdMatch[5] || 0, 10);
-        let second = parseInt(ymdMatch[6] || 0, 10);
+      // Convert year to CE for epoch timestamp and BE (พ.ศ.) for Thai UI display
+      let ceYear = year > 2400 ? year - 543 : year;
+      let beYear = year > 2400 ? year : year + 543;
+      let epochMs = new Date(ceYear, month - 1, day, hour, minute, second).getTime();
 
-        if (year > 2400) year -= 543;
-        return new Date(year, month, day, hour, minute, second).getTime();
-      }
-
-      const parsed = new Date(clean).getTime();
-      return isNaN(parsed) ? 0 : parsed;
+      return { day, month, beYear, hour, minute, second, epochMs };
     }
 
-    // Always outputs: DD/MM/25XX HH:mm:ss in พ.ศ.
     function formatTime(str) {
-      if (!str) return "-";
-      let timeMs = parseTimestamp(str);
-      if (timeMs === 0) return String(str).replace(/^SENT\s*\(/i, "").replace(/\)$/, "").trim();
+      const parsed = parseDateComponents(str);
+      if (!parsed) return str ? String(str).replace(/^SENT\s*\(/i, "").replace(/\)$/, "").trim() : "-";
 
-      const d = new Date(timeMs);
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const year = d.getFullYear() > 2400 ? d.getFullYear() : d.getFullYear() + 543;
-      const hour = String(d.getHours()).padStart(2, '0');
-      const minute = String(d.getMinutes()).padStart(2, '0');
-      const sec = String(d.getSeconds()).padStart(2, '0');
+      const d = String(parsed.day).padStart(2, '0');
+      const m = String(parsed.month).padStart(2, '0');
+      const h = String(parsed.hour).padStart(2, '0');
+      const min = String(parsed.minute).padStart(2, '0');
+      const s = String(parsed.second).padStart(2, '0');
 
-      return `${day}/${month}/${year} ${hour}:${minute}:${sec}`;
+      return `${d}/${m}/${parsed.beYear} ${h}:${min}:${s}`;
     }
 
-    // Always outputs: DD/MM/25XX in พ.ศ.
     function formatThaiDateDisplay(dateStr) {
-      if (!dateStr) return "-";
-      let timeMs = parseTimestamp(dateStr);
-      if (timeMs === 0) {
-        try {
-          const parts = String(dateStr).trim().split(/[\/\-]/);
-          if (parts.length === 3) {
-            let yr = parseInt(parts[0].length === 4 ? parts[0] : parts[2], 10);
-            let mo = parseInt(parts[1], 10);
-            let da = parseInt(parts[0].length === 4 ? parts[2] : parts[0], 10);
-            let thYr = yr > 2400 ? yr : yr + 543;
-            return `${da}/${mo}/${thYr}`;
-          }
-        } catch (e) {}
-        return dateStr;
-      }
-      const d = new Date(timeMs);
-      const day = d.getDate();
-      const month = d.getMonth() + 1;
-      const year = d.getFullYear() > 2400 ? d.getFullYear() : d.getFullYear() + 543;
-      return `${day}/${month}/${year}`;
+      const parsed = parseDateComponents(dateStr);
+      if (!parsed) return dateStr || "-";
+      return `${parsed.day}/${parsed.month}/${parsed.beYear}`;
     }
 
     form.addEventListener("submit", async (e) => {
@@ -291,7 +293,7 @@
 
           statusCard.className = `p-4 bg-slate-50 border border-slate-200 border-l-4 ${style.border} rounded-lg flex items-center justify-between`;
 
-          // Appointment box display
+          // Appointment box check
           const hasRepairStatus = currentStatus.includes("ช่างจะเข้าซ่อมในห้อง");
           if (hasRepairStatus && d.appointmentDate) {
             appointmentDateText.textContent = formatThaiDateDisplay(d.appointmentDate);
@@ -300,7 +302,7 @@
             appointmentAlert.classList.add("hidden");
           }
 
-          // Chronological Sort: Most Recent (Desc) on top
+          // Sort History: Most Recent (Desc) on Top
           timelineList.innerHTML = "";
           const history = d.statusHistory || [];
 
@@ -308,7 +310,9 @@
             timelineList.innerHTML = `<p class="text-xs text-slate-400">ยังไม่มีบันทึกสถานะ</p>`;
           } else {
             const sortedHistory = [...history].sort((a, b) => {
-              return parseTimestamp(b.timestamp) - parseTimestamp(a.timestamp);
+              const timeA = parseDateComponents(a.timestamp)?.epochMs || 0;
+              const timeB = parseDateComponents(b.timestamp)?.epochMs || 0;
+              return timeB - timeA;
             });
 
             sortedHistory.forEach((item, index) => {
