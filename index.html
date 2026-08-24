@@ -295,8 +295,7 @@
           statusCard.className = `p-4 bg-slate-50 border border-slate-200 border-l-4 ${style.border} rounded-lg flex items-center justify-between`;
 
           // Appointment box check
-          const hasRepairStatus = currentStatus.includes("ช่างจะเข้าซ่อมในห้อง");
-          if (hasRepairStatus && d.appointmentDate) {
+          if (d.appointmentDate) {
             appointmentDateText.textContent = formatThaiDateDisplay(d.appointmentDate);
             appointmentAlert.classList.remove("hidden");
           } else {
@@ -321,13 +320,13 @@
               const isLastItem = index === sortedHistory.length - 1;
               const itemStatus = item.status || "";
 
-              const stepAppointmentDate = item.appointmentDate || (itemStatus.includes("ช่างจะเข้าซ่อมในห้อง") ? d.appointmentDate : null);
+              const stepAppointmentDate = item.appointmentDate || null;
 
               const stepElement = document.createElement("div");
               stepElement.className = "relative flex items-start";
 
               let appointmentBadge = "";
-              if (itemStatus.includes("ช่างจะเข้าซ่อมในห้อง") && stepAppointmentDate) {
+              if (stepAppointmentDate) {
                 appointmentBadge = `
                   <div class="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-900 border border-amber-200 text-xs font-medium">
                     <span>📅 กำหนดการเข้าซ่อม:</span>
