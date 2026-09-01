@@ -184,83 +184,89 @@
 
     // Standardize any datetime string into pure components { day, month, beYear, epochMs }
     function parseDateComponents(rawStr) {
-      if (!rawStr) return null;
-      let clean = String(rawStr).replace(/^SENT\s*\(/i, "").replace(/\)$/, "").trim();
+  if (!rawStr) return null;
+  let clean = String(rawStr).replace(/^SENT\s*\(/i, "").replace(/\)$/, "").trim();
+  if (clean.includes("|")) clean = clean.split("|")[0].trim();
 
-      let day, month, year, hour = 0, minute = 0, second = 0;
+  let day, month, year, hour = 0, minute = 0, second = 0;
 
-      // Check for ISO/SQL format: YYYY-MM-DD or YYYY/MM/DD
-      const isoMatch = clean.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
-      // Check for standard format: DD/MM/YYYY or MM/DD/YYYY
-      const dmyMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  // 1. ISO/SQL format: YYYY-MM-DD or YYYY/MM/DD
+  const isoMatch = clean.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  // 2. Slash format: M/D/YYYY or D/M/YYYY
+  const slashMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
 
-      if (isoMatch) {
-        year = parseInt(isoMatch[1], 10);
-        month = parseInt(isoMatch[2], 10);
-        day = parseInt(isoMatch[3], 10);
-        hour = parseInt(isoMatch[4] || 0, 10);
-        minute = parseInt(isoMatch[5] || 0, 10);
-        second = parseInt(isoMatch[6] || 0, 10);
-      } else if (dmyMatch) {
-        let p1 = parseInt(dmyMatch[1], 10);
-        let p2 = parseInt(dmyMatch[2], 10);
-        year = parseInt(dmyMatch[3], 10);
-        hour = parseInt(dmyMatch[4] || 0, 10);
-        minute = parseInt(dmyMatch[5] || 0, 10);
-        second = parseInt(dmyMatch[6] || 0, 10);
+  if (isoMatch) {
+    year = parseInt(isoMatch[1], 10);
+    month = parseInt(isoMatch[2], 10);
+    day = parseInt(isoMatch[3], 10);
+    hour = parseInt(isoMatch[4] || 0, 10);
+    minute = parseInt(isoMatch[5] || 0, 10);
+    second = parseInt(isoMatch[6] || 0, 10);
+  } else if (slashMatch) {
+    let p1 = parseInt(slashMatch[1], 10);
+    let p2 = parseInt(slashMatch[2], 10);
+    year = parseInt(slashMatch[3], 10);
+    if (year < 100) year += 2000;
+    hour = parseInt(slashMatch[4] || 0, 10);
+    minute = parseInt(slashMatch[5] || 0, 10);
+    second = parseInt(slashMatch[6] || 0, 10);
 
-        // Disambiguate day vs month
-        if (p1 > 12) {
-          day = p1;
-          month = p2;
-        } else if (p2 > 12) {
-          day = p2;
-          month = p1;
-        } else {
-          // Default to DD/MM/YYYY
-          day = p1;
-          month = p2;
-        }
-      } else {
-        const parsed = new Date(clean);
-        if (isNaN(parsed.getTime())) return null;
-        return {
-          day: parsed.getDate(),
-          month: parsed.getMonth() + 1,
-          beYear: parsed.getFullYear() > 2400 ? parsed.getFullYear() : parsed.getFullYear() + 543,
-          hour: parsed.getHours(),
-          minute: parsed.getMinutes(),
-          second: parsed.getSeconds(),
-          epochMs: parsed.getTime()
-        };
-      }
-
-      // Convert year to CE for epoch timestamp and BE (พ.ศ.) for Thai UI display
-      let ceYear = year > 2400 ? year - 543 : year;
-      let beYear = year > 2400 ? year : year + 543;
-      let epochMs = new Date(ceYear, month - 1, day, hour, minute, second).getTime();
-
-      return { day, month, beYear, hour, minute, second, epochMs };
+    // Disambiguate day vs month
+    if (p1 > 12) {
+      // First number > 12 -> must be Day (DD/MM/YYYY)
+      day = p1;
+      month = p2;
+    } else if (p2 > 12) {
+      // Second number > 12 -> must be Day (MM/DD/YYYY)
+      day = p2;
+      month = p1;
+    } else {
+      // Default Google Sheets export is M/D/YYYY (e.g. 9/2/2026 -> Sept 2)
+      month = p1;
+      day = p2;
     }
+  } else {
+    const parsed = new Date(clean);
+    if (isNaN(parsed.getTime())) return null;
+    const yr = parsed.getFullYear();
+    return {
+      day: parsed.getDate(),
+      month: parsed.getMonth() + 1,
+      beYear: yr > 2400 ? yr : yr + 543,
+      hour: parsed.getHours(),
+      minute: parsed.getMinutes(),
+      second: parsed.getSeconds(),
+      epochMs: parsed.getTime()
+    };
+  }
+
+  let ceYear = year > 2400 ? year - 543 : year;
+  let beYear = year > 2400 ? year : year + 543;
+  let epochMs = new Date(ceYear, month - 1, day, hour, minute, second).getTime();
+
+  return { day, month, beYear, hour, minute, second, epochMs };
+}
 
     function formatTime(str) {
-      const parsed = parseDateComponents(str);
-      if (!parsed) return str ? String(str).replace(/^SENT\s*\(/i, "").replace(/\)$/, "").trim() : "-";
+  const parsed = parseDateComponents(str);
+  if (!parsed) return str ? String(str).replace(/^SENT\s*\(/i, "").replace(/\)$/, "").trim() : "-";
 
-      const d = String(parsed.day).padStart(2, '0');
-      const m = String(parsed.month).padStart(2, '0');
-      const h = String(parsed.hour).padStart(2, '0');
-      const min = String(parsed.minute).padStart(2, '0');
-      const s = String(parsed.second).padStart(2, '0');
+  const d = String(parsed.day).padStart(2, '0');
+  const m = String(parsed.month).padStart(2, '0');
+  const h = String(parsed.hour).padStart(2, '0');
+  const min = String(parsed.minute).padStart(2, '0');
+  const s = String(parsed.second).padStart(2, '0');
 
-      return `${d}/${m}/${parsed.beYear} ${h}:${min}:${s}`;
-    }
+  return `${d}/${m}/${parsed.beYear} ${h}:${min}:${s}`;
+}
 
-    function formatThaiDateDisplay(dateStr) {
-      const parsed = parseDateComponents(dateStr);
-      if (!parsed) return dateStr || "-";
-      return `${parsed.day}/${parsed.month}/${parsed.beYear}`;
-    }
+function formatThaiDateDisplay(dateStr) {
+  const parsed = parseDateComponents(dateStr);
+  if (!parsed) return dateStr || "-";
+  const d = String(parsed.day).padStart(2, '0');
+  const m = String(parsed.month).padStart(2, '0');
+  return `${d}/${m}/${parsed.beYear}`;
+}
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
